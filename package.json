@@ -15,13 +15,16 @@
     "dotenv": "^17.4.2",
     "lucide-react": "^0.383.0",
     "mongoose": "^8.6.0",
-    "next": "^16.2.10",
+    "next": "15.1.4",
     "next-auth": "5.0.0-beta.25",
     "next-cloudinary": "^6.16.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "resend": "^4.0.1",
     "stripe": "^16.8.0"
+  },
+  "overrides": {
+    "next": "15.1.4"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.0",
