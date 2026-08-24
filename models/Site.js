@@ -246,12 +246,12 @@ const SiteSchema = new mongoose.Schema(
       select: false, // n'est jamais renvoyé par défaut dans les requêtes .find()
     },
 
-    // --- Références Stripe (remplies après paiement) ---
-    stripeCustomerId: { type: String, default: null },
-    stripeSubscriptionId: { type: String, default: null },
-    stripeSubscriptionStatus: {
+    // --- Références Paddle (remplies après paiement / via webhook) ---
+    paddleCustomerId: { type: String, default: null },
+    paddleSubscriptionId: { type: String, default: null },
+    paddleSubscriptionStatus: {
       type: String,
-      enum: ["none", "active", "past_due", "canceled", "incomplete"],
+      enum: ["none", "active", "past_due", "paused", "canceled"],
       default: "none",
     },
   },

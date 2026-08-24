@@ -27,7 +27,7 @@ const SECTIONS = [
  * section qui l'intéresse, sans repasser par tout le parcours.
  */
 export default function SiteEditor({ initialSite }) {
-  // On retire les champs non éditables (_id, userId, isPublished, Stripe...)
+  // On retire les champs non éditables (_id, userId, isPublished, Paddle...)
   // pour ne garder que ce que les composants d'étape attendent.
   const [form, setForm] = useState(() => ({
     subdomain: initialSite.subdomain,

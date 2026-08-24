@@ -3,15 +3,27 @@ import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/mongodb";
 import Site from "@/models/Site";
 import Appointment from "@/models/Appointment";
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
 
 /**
  * Route PUBLIQUE (pas de editToken requis) : un patient anonyme depuis
  * le site d'un cabinet soumet une demande de RDV. On vérifie seulement
  * que le site existe et est publié, pour éviter de stocker des demandes
  * orphelines ou de spammer un site désactivé.
+ *
+ * Protégée par un rate limit par IP : c'est la seule route publique qui
+ * écrit en base et déclenche des emails, donc vecteur de spam privilégié.
  */
 export async function POST(request) {
   try {
+    const rl = rateLimit(`appointments:${getClientIp(request)}`, 5);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Trop de demandes envoyées. Merci de réessayer plus tard." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+      );
+    }
+
     const body = await request.json();
     const { subdomain, patientName, patientPhone, patientEmail, preferredDate, reason } = body;
 

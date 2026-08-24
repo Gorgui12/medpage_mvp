@@ -20,15 +20,15 @@ const STATUS_INFO = {
     color: "text-orange-600 bg-orange-50 border-orange-100",
     label: "Paiement en retard",
   },
+  paused: {
+    icon: AlertCircle,
+    color: "text-orange-600 bg-orange-50 border-orange-100",
+    label: "Abonnement en pause",
+  },
   canceled: {
     icon: XCircle,
     color: "text-red-600 bg-red-50 border-red-100",
     label: "Abonnement annulé",
-  },
-  incomplete: {
-    icon: AlertCircle,
-    color: "text-amber-600 bg-amber-50 border-amber-100",
-    label: "Abonnement incomplet",
   },
 };
 

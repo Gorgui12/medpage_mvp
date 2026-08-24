@@ -140,7 +140,7 @@ export default async function AdminRevenuePage() {
         </div>
       )}
 
-      {/* --- Note sur l'intégration Stripe --- */}
+      {/* --- Note sur l'intégration Paddle --- */}
       <p className="text-xs text-slate-600 mt-6">
         Pour des données de facturation précises (remboursements, taxes, disputes),
         consultez directement le{" "}
@@ -150,7 +150,7 @@ export default async function AdminRevenuePage() {
           rel="noopener noreferrer"
           className="text-slate-400 hover:text-slate-200 underline"
         >
-          Dashboard Stripe
+          Dashboard Paddle
         </a>.
       </p>
     </div>

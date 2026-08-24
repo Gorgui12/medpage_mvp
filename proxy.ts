@@ -1,11 +1,11 @@
-// middleware.ts
+// proxy.ts (anciennement middleware.ts — convention Next.js 16)
 import { NextResponse } from "next/server";
 import NextAuth from "next-auth";
 import { authConfig } from "@/auth.config";
 
 /**
  * On instancie ICI une version "légère" d'Auth.js (sans provider Credentials
- * ni import Mongoose), dédiée au middleware qui tourne en Edge Runtime.
+ * ni import Mongoose), dédiée au proxy qui tourne avant les routes.
  * Voir auth.config.js pour le détail de cette séparation.
  */
 const { auth } = NextAuth(authConfig);

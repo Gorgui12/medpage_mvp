@@ -2,12 +2,16 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, CreditCard, Tag } from "lucide-react";
+import { Loader2, CreditCard } from "lucide-react";
 
+/**
+ * Lance le paiement via /api/paddle/checkout : la route crée la
+ * transaction côté serveur et renvoie l'URL du checkout hébergé Paddle.
+ * (Les codes promo se saisissent directement sur la page de checkout
+ * Paddle, qui les gère nativement.)
+ */
 export default function ActivateButton() {
   const [isLoading, setIsLoading] = useState(false);
-  const [promoCode, setPromoCode] = useState("");
-  const [showPromo, setShowPromo] = useState(false);
   const [error, setError] = useState(null);
 
   async function handleActivate() {
@@ -15,10 +19,10 @@ export default function ActivateButton() {
     setIsLoading(true);
 
     try {
-      const res = await fetch("/api/stripe/checkout", {
+      const res = await fetch("/api/paddle/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ promoCode: promoCode.trim() || null }),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
 
@@ -37,28 +41,6 @@ export default function ActivateButton() {
 
   return (
     <div className="space-y-3">
-      {/* --- Champ code promo optionnel --- */}
-      {showPromo ? (
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-            placeholder="Code promo (ex: MEDPAGE50)"
-            className="flex-1 px-3 py-2.5 text-sm rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-slate-300"
-          />
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setShowPromo(true)}
-          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition"
-        >
-          <Tag className="h-3.5 w-3.5" />
-          J'ai un code promo
-        </button>
-      )}
-
       <button
         onClick={handleActivate}
         disabled={isLoading}
@@ -76,4 +58,3 @@ export default function ActivateButton() {
     </div>
   );
 }
-

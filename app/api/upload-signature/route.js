@@ -1,5 +1,6 @@
 // app/api/upload-signature/route.js
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import cloudinary from "@/lib/cloudinary";
 
 /**
@@ -7,17 +8,44 @@ import cloudinary from "@/lib/cloudinary";
  * Le widget d'upload côté client appelle cette route AVANT d'envoyer
  * le fichier à Cloudinary, pour prouver que l'upload vient bien de notre app
  * (et pas d'un tiers qui aurait deviné notre cloud_name).
+ *
+ * PROTÉGÉE : seul un utilisateur connecté peut obtenir une signature,
+ * sinon n'importe qui pourrait uploader des fichiers illimités sur
+ * le compte Cloudinary (coût + stockage arbitraire).
  */
 export async function POST(request) {
   try {
-    const body = await request.json();
-    const { paramsToSign } = body;
-
-    if (!paramsToSign) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "paramsToSign manquant." },
+        { error: "Vous devez être connecté pour uploader une image." },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const rawParams = body?.paramsToSign;
+
+    if (!rawParams || typeof rawParams !== "object" || Array.isArray(rawParams)) {
+      return NextResponse.json(
+        { error: "paramsToSign manquant ou invalide." },
         { status: 400 }
       );
+    }
+
+    // On ne signe que des paramètres scalaires (protection contre les
+    // objets/tableaux imbriqués injectés dans la chaîne à signer).
+    const paramsToSign = {};
+    for (const [key, value] of Object.entries(rawParams)) {
+      if (typeof value === "string" || typeof value === "number") {
+        paramsToSign[key] = value;
+      }
+    }
+
+    // Le timestamp est obligatoire chez Cloudinary : on l'impose côté
+    // serveur si le widget ne l'a pas fourni.
+    if (!paramsToSign.timestamp) {
+      paramsToSign.timestamp = Math.floor(Date.now() / 1000);
     }
 
     const signature = cloudinary.utils.api_sign_request(

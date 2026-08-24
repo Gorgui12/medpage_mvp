@@ -17,6 +17,10 @@ export const authConfig = {
   pages: {
     signIn: "/login",
   },
+  // Nécessaire en production (next start / self-host) : sans ça, Auth.js
+  // rejette toute requête avec UntrustedHost car l'host ne peut pas être
+  // inféré de manière fiable derrière un reverse-proxy.
+  trustHost: true,
   providers: [], // volontairement vide ici ; les providers réels sont dans auth.js
   callbacks: {
     async session({ session, token }) {

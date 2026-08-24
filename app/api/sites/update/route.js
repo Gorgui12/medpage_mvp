@@ -1,9 +1,10 @@
 // app/api/sites/update/route.js
 import { NextResponse } from "next/server";
 import { getOwnedSite } from "@/lib/getOwnedSite";
+import Site from "@/models/Site";
 
 // Champs que le médecin a le droit de modifier lui-même.
-// On exclut volontairement subdomain, isPublished, userId, champs Stripe.
+// On exclut volontairement subdomain, isPublished, userId, champs Paddle.
 const EDITABLE_FIELDS = [
   "cabinetName",
   "doctorName",
@@ -42,14 +43,21 @@ export async function PATCH(request) {
 
     const updates = await request.json();
 
+    // getOwnedSite() renvoie un objet .lean() (POJO) sans méthode .save().
+    // On recharge donc le document Mongoose complet avant de le muter.
+    const doc = await Site.findById(site._id);
+    if (!doc) {
+      return NextResponse.json({ error: "Site introuvable." }, { status: 404 });
+    }
+
     // On ne retient que les champs autorisés, le reste est ignoré silencieusement
     for (const field of EDITABLE_FIELDS) {
       if (updates[field] !== undefined) {
-        site[field] = updates[field];
+        doc[field] = updates[field];
       }
     }
 
-    await site.save(); // déclenche les validations Mongoose (regex couleur, etc.)
+    await doc.save(); // déclenche les validations Mongoose (regex couleur, etc.)
 
     return NextResponse.json(
       { message: "Site mis à jour avec succès." },
