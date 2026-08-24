@@ -39,7 +39,7 @@ export default async function SubscriptionPage() {
     redirect("/");
   }
 
-  const status = STATUS_INFO[site.stripeSubscriptionStatus] || STATUS_INFO.none;
+  const status = STATUS_INFO[site.paddleSubscriptionStatus] || STATUS_INFO.none;
   const StatusIcon = status.icon;
 
   return (

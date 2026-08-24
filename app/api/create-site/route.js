@@ -176,7 +176,7 @@ export async function POST(request) {
       },
       notificationEmail: notificationEmail?.trim() || "",
       notificationWhatsapp: notificationWhatsapp?.trim() || "",
-      isPublished: false, // le site ne sera activé qu'après paiement Stripe
+      isPublished: false, // le site ne sera activé qu'après paiement Paddle
       editToken,
     });
 

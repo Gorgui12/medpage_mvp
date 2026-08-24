@@ -13,7 +13,7 @@ async function getAdminStats() {
     User.countDocuments(),
     Site.countDocuments(),
     Appointment.countDocuments(),
-    Site.find().select("isPublished stripeSubscriptionStatus trialEndsAt trialRevoked stripeCustomerId").lean(),
+    Site.find().select("isPublished paddleSubscriptionStatus trialEndsAt trialRevoked paddleCustomerId").lean(),
   ]);
 
   // Sérialiser les sites pour éviter les erreurs de sérialisation

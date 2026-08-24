@@ -21,14 +21,33 @@ function buildEmbedUrl(rawUrl) {
 
   try {
     // Cas 1 : déjà un lien d'intégration
-    if (rawUrl.includes("output=embed") || rawUrl.includes("/maps/embed")) {
+    if (rawUrl.includes("output=embed") || rawUrl.includes("/maps/embed") || rawUrl.includes("/maps/embed/v1/")) {
       return rawUrl;
     }
 
-    // Cas 2 : lien classique -> on tente d'ajouter output=embed
+    // Cas 2 : lien court Google (maps.app.goo.gl) -> on ne peut pas transformer, on utilise le fallback
+    if (rawUrl.includes("maps.app.goo.gl")) {
+      return null;
+    }
+
+    // Cas 3 : lien classique -> on tente d'ajouter output=embed
     const url = new URL(rawUrl);
-    url.searchParams.set("output", "embed");
-    return url.toString();
+    
+    // Pour les liens Google Maps classiques, on utilise le format d'embed API
+    if (url.hostname.includes("google.com") || url.hostname.includes("maps.google.com")) {
+      // Extraire le lieu de l'URL et le convertir en format embed
+      const placeMatch = rawUrl.match(/\/place\/([^\/]+)/);
+      if (placeMatch) {
+        const place = placeMatch[1];
+        return `https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent(place)}`;
+      }
+      
+      // Alternative : utiliser le mode embed direct
+      url.searchParams.set("output", "embed");
+      return url.toString();
+    }
+    
+    return null; // Format non supporté
   } catch {
     return null; // URL malformée, on ne tente pas l'iframe
   }

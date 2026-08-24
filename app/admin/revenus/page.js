@@ -10,7 +10,7 @@ async function getRevenueStats() {
   await dbConnect();
 
   const sites = await Site.find()
-    .select("isPublished stripeSubscriptionStatus trialEndsAt trialRevoked createdAt")
+    .select("isPublished paddleSubscriptionStatus trialEndsAt trialRevoked createdAt")
     .lean();
 
   // Sérialiser les sites pour éviter les erreurs de sérialisation
@@ -40,7 +40,7 @@ async function getRevenueStats() {
       conversionByMonth[monthKey] = (conversionByMonth[monthKey] || 0) + 1;
     }
 
-    if (status === "expired" || site.stripeSubscriptionStatus === "canceled") {
+    if (status === "expired" || site.paddleSubscriptionStatus === "canceled") {
       churned++;
     }
   }
@@ -145,7 +145,7 @@ export default async function AdminRevenuePage() {
         Pour des données de facturation précises (remboursements, taxes, disputes),
         consultez directement le{" "}
         <a
-          href="https://dashboard.stripe.com"
+          href="https://vendors.paddle.com"
           target="_blank"
           rel="noopener noreferrer"
           className="text-slate-400 hover:text-slate-200 underline"

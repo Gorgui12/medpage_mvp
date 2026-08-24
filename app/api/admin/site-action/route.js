@@ -30,12 +30,12 @@ export async function POST(request) {
     switch (action) {
       case "activate":
         site.isPublished = true;
-        site.stripeSubscriptionStatus = "active";
+        site.paddleSubscriptionStatus = "active";
         break;
 
       case "deactivate":
         site.isPublished = false;
-        site.stripeSubscriptionStatus = "canceled";
+        site.paddleSubscriptionStatus = "canceled";
         break;
 
       case "extend_trial":

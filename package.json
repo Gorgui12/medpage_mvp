@@ -6,7 +6,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook",
     "check-db": "node scripts/check-db.js"
   },
   "dependencies": {
@@ -20,8 +19,7 @@
     "next-cloudinary": "^6.16.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "resend": "^4.0.1",
-    "stripe": "^16.8.0"
+    "resend": "^4.0.1"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.0",
