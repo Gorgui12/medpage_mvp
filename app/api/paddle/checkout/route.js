@@ -5,9 +5,27 @@ import { paddleRequest } from "@/lib/paddle";
 import { dbConnect } from "@/lib/mongodb";
 import Site from "@/models/Site";
 
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ||
-  `http://localhost:3000`;
+/**
+ * Calcule l'URL de base de l'app à partir de la requête entrante.
+ * On privilégie NEXT_PUBLIC_APP_URL si défini, sinon on dérive le schéma +
+ * host du header Host de la requête. Cela garantit que le success_url de
+ * Paddle pointe toujours vers le vrai domaine visité (jamais localhost en
+ * production), même si l'environnement de prod n'a pas la variable.
+ */
+function resolveAppUrl(request) {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "");
+  }
+
+  const host = request.headers.get("host");
+  if (host && !host.includes("localhost")) {
+    // En production derrière un proxy/load balancer, on suppose HTTPS.
+    const proto = request.headers.get("x-forwarded-proto") || "https";
+    return `${proto}://${host}`;
+  }
+
+  return "http://localhost:3000";
+}
 
 /**
  * Prépare le paiement Paddle pour le site du médecin connecté.
@@ -23,6 +41,7 @@ const APP_URL =
  */
 export async function POST(request) {
   try {
+    const APP_URL = resolveAppUrl(request);
     const { session: authSession, site } = await getOwnedSite();
 
     if (!authSession) {
