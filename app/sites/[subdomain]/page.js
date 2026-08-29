@@ -4,23 +4,66 @@ import Site from "@/models/Site";
 import { Clock } from "lucide-react";
 import { isSiteAccessible } from "@/lib/siteAccess";
 import { serializeMongoose } from "@/lib/serialize";
+import { detectGeo } from "@/lib/geoDetect";
+import { cloudinaryOptimized } from "@/lib/cloudinaryImage";
+import dynamic from "next/dynamic";
 
 import SiteHeader from "@/app/components/site-sections/SiteHeader";
 import Hero from "@/app/components/site-sections/Hero";
+import SiteSchemaOrg from "@/app/components/site-sections/SiteSchemaOrg";
+import SectionSkeleton from "@/app/components/site-sections/SectionSkeleton";
 import About from "@/app/components/site-sections/About";
-import Services from "@/app/components/site-sections/Services";
-import Gallery from "@/app/components/site-sections/Gallery";
-import Testimonials from "@/app/components/site-sections/Testimonials";
-import FAQ from "@/app/components/site-sections/FAQ";
-import LocationMap from "@/app/components/site-sections/LocationMap";
-import BookingSection from "@/app/components/site-sections/BookingSection";
-import PracticalInfo from "@/app/components/site-sections/PracticalInfo";
-import SiteFooter from "@/app/components/site-sections/SiteFooter";
-import RevealOnScroll from "@/app/components/site-sections/RevealOnScroll";
 
 // Revalidation courte pendant le trial (le site peut être activé à tout moment)
 // et plus longue après paiement (contenu change rarement).
 export const revalidate = 30;
+
+// Viewport dynamique (mobile SEO) : maximum-scale autorisé jusqu'à 5 pour la
+// lisibilité Google, séparé des métadonnées (convention Next.js 16).
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
+// Sections non critiques chargées en lazy (dynamiquement) avec un squelette
+// de chargement : améliore le LCP et le Perceived Performance, donc le SEO.
+const Services = dynamic(
+  () => import("@/app/components/site-sections/Services"),
+  { loading: () => <SectionSkeleton /> }
+);
+const Gallery = dynamic(
+  () => import("@/app/components/site-sections/Gallery"),
+  { loading: () => <SectionSkeleton /> }
+);
+const Testimonials = dynamic(
+  () => import("@/app/components/site-sections/Testimonials"),
+  { loading: () => <SectionSkeleton /> }
+);
+const FAQ = dynamic(
+  () => import("@/app/components/site-sections/FAQ"),
+  { loading: () => <SectionSkeleton /> }
+);
+const LocationMap = dynamic(
+  () => import("@/app/components/site-sections/LocationMap"),
+  { loading: () => <SectionSkeleton /> }
+);
+const BookingSection = dynamic(
+  () => import("@/app/components/site-sections/BookingSection"),
+  { loading: () => <SectionSkeleton /> }
+);
+const PracticalInfo = dynamic(
+  () => import("@/app/components/site-sections/PracticalInfo"),
+  { loading: () => <SectionSkeleton /> }
+);
+const SiteFooter = dynamic(
+  () => import("@/app/components/site-sections/SiteFooter"),
+  { loading: () => <SectionSkeleton /> }
+);
+const RevealOnScroll = dynamic(
+  () => import("@/app/components/site-sections/RevealOnScroll"),
+  { ssr: true }
+);
 
 async function getSiteData(subdomain) {
   await dbConnect();
@@ -43,26 +86,113 @@ export async function generateMetadata({ params }) {
     return {
       title: "Site introuvable | MedPage",
       description: "Ce site n'existe pas ou n'est plus disponible.",
+      robots: { index: false, follow: false },
     };
   }
 
-  const title = `Dr. ${site.doctorName} - ${site.specialty} à ${site.city} | Prendre RDV`;
-  const description = site.tagline
-    ? `${site.tagline} — ${site.cabinetName} à ${site.city}.`
-    : `${site.cabinetName} : cabinet de ${site.specialty.toLowerCase()} à ${site.city}. Prenez rendez-vous en ligne avec Dr. ${site.doctorName} dès maintenant.`;
+  const geo = detectGeo(site.city);
+  const baseUrl = `https://${subdomain}.medpage.site`;
+  const isEnglish = geo.lang === "en";
+  const doctorFull = `Dr. ${site.doctorName}`;
+
+  // --- Title / Description localisés ---
+  const title = isEnglish
+    ? `Dr. ${site.doctorName} — ${site.specialty} in ${site.city} | Book Appointment Online`
+    : `Dr. ${site.doctorName} — ${site.specialty} à ${site.city} | Consultation & RDV en ligne`;
+
+  let description;
+  if (isEnglish) {
+    description = site.tagline
+      ? `${site.tagline} — ${site.cabinetName} in ${site.city}.`
+      : `${site.cabinetName}: ${site.specialty.toLowerCase()} practice in ${site.city}. Book appointment online with Dr. ${site.doctorName} today.`;
+  } else {
+    description = site.tagline
+      ? `${site.tagline} — ${site.cabinetName} à ${site.city}.`
+      : `${site.cabinetName} : cabinet de ${site.specialty.toLowerCase()} à ${site.city}. Prenez rendez-vous en ligne avec Dr. ${site.doctorName} dès maintenant.`;
+  }
+  // Description max 160 caractères (troncature propre sur un mot)
+  if (description.length > 160) {
+    description = description.slice(0, 157).trim() + "...";
+  }
+
+  const keywords = [
+    site.specialty,
+    site.city,
+    `${site.specialty} ${site.city}`,
+    isEnglish ? `${site.specialty} practice ${site.city}` : `cabinet médical ${site.city}`,
+    isEnglish ? `doctor ${site.city}` : `docteur ${site.city}`,
+    isEnglish ? `${site.specialty} doctor` : `médecin ${site.specialty}`,
+    `${doctorFull} ${site.city}`,
+  ].filter(Boolean);
+
+  const indexed = isSiteAccessible(site);
+  const imageUrl =
+    cloudinaryOptimized(site.coverPhotoUrl) ||
+    cloudinaryOptimized(site.profilePhotoUrl) ||
+    "https://medpage.site/og-default.png";
+  const nameParts = (site.doctorName || "").split(" ").filter(Boolean);
 
   return {
     title,
     description,
+    keywords,
+    // Canonical = sous-domaine, pas l'URL rewritée par le middleware
+    alternates: {
+      canonical: baseUrl,
+      languages: {
+        [geo.hreflang]: baseUrl,
+        "x-default": baseUrl,
+      },
+    },
+    robots: indexed
+      ? {
+          index: true,
+          follow: true,
+          googleBot: {
+            index: true,
+            follow: true,
+            "max-snippet": -1,
+            "max-image-preview": "large",
+            "max-video-preview": -1,
+          },
+        }
+      : { index: false, follow: false, nocache: true },
     openGraph: {
       title,
       description,
-      type: "website",
-      images: site.coverPhotoUrl ? [site.coverPhotoUrl] : undefined,
+      url: baseUrl,
+      siteName: site.cabinetName,
+      locale: geo.locale,
+      type: "profile",
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: `${doctorFull} - ${site.specialty} ${site.city}`,
+        },
+      ],
+      profile: {
+        firstName: nameParts[0],
+        lastName: nameParts.slice(1).join(" ") || undefined,
+        username: subdomain,
+      },
     },
-    robots: isSiteAccessible(site)
-      ? { index: true, follow: true }
-      : { index: false, follow: false },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [imageUrl],
+    },
+    other: {
+      "geo.region": geo.addressCountry,
+      "geo.placename": site.city,
+      "geo.position": "",
+      ICBM: "",
+      "DC.title": `${site.specialty} ${site.city}`,
+      "DC.subject": site.specialty,
+      "DC.language": geo.lang,
+    },
   };
 }
 
@@ -84,16 +214,24 @@ export default async function MedicalSitePage({ params }) {
 
   // --- Cas 3 : trial en cours OU abonnement actif ---
   const accent = site.themeColor || "#0EA5A8";
+  const geo = detectGeo(site.city);
 
   return (
     <main className="min-h-screen bg-white text-slate-800 antialiased">
+      {/* Données structurées schema.org injectées côté serveur */}
+      <SiteSchemaOrg site={site} />
+
       <SiteHeader site={site} accent={accent} />
 
-      <Hero site={site} accent={accent} />
+      <Hero site={site} accent={accent} geo={geo} />
 
       <div id="about">
+        {/*
+          About reste en statique (au-dessus de la ligne de flottaison) pour
+          un meilleur LCP ; les sections suivantes sont lazy-loadées.
+        */}
         <RevealOnScroll>
-          <About site={site} accent={accent} />
+          <About site={site} accent={accent} geo={geo} />
         </RevealOnScroll>
       </div>
 
@@ -124,7 +262,7 @@ export default async function MedicalSitePage({ params }) {
       </RevealOnScroll>
 
       <RevealOnScroll>
-        <BookingSection site={site} accent={accent} />
+        <BookingSection site={site} accent={accent} geo={geo} />
       </RevealOnScroll>
 
       <RevealOnScroll>

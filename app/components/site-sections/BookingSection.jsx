@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Loader2, CheckCircle2, Phone, ExternalLink } from "lucide-react";
 
-export default function BookingSection({ site, accent }) {
+export default function BookingSection({ site, accent, geo }) {
   const [form, setForm] = useState({
     patientName: "",
     patientPhone: "",
@@ -47,6 +47,7 @@ export default function BookingSection({ site, accent }) {
   }
 
   const phoneHref = `tel:${site.phone.replace(/\s+/g, "")}`;
+  const isEnglish = geo?.lang === "en";
 
   return (
     <section id="contact" className="max-w-3xl mx-auto px-6 py-16 border-t border-slate-100">
@@ -54,13 +55,18 @@ export default function BookingSection({ site, accent }) {
         className="text-xs font-semibold uppercase tracking-wider mb-3 text-center"
         style={{ color: accent }}
       >
-        Rendez-vous
+        {isEnglish ? "Appointment" : "Rendez-vous"}
       </h2>
-      <h3 className="text-2xl font-bold text-slate-900 text-center mb-3">
-        Prendre rendez-vous
-      </h3>
+      {/* Balise h2 riche en mots-clés : spécialité + ville + nom du praticien */}
+      <h2 className="text-2xl font-bold text-slate-900 text-center mb-3">
+        {isEnglish
+          ? `Book an appointment with Dr. ${site.doctorName}, ${site.specialty.toLowerCase()} in ${site.city}`
+          : `Prendre rendez-vous chez Dr. ${site.doctorName}, ${site.specialty} à ${site.city}`}
+      </h2>
       <p className="text-sm text-slate-500 text-center mb-10">
-        Remplissez ce formulaire, nous vous recontactons rapidement pour confirmer.
+        {isEnglish
+          ? "Fill out this form and we will contact you shortly to confirm."
+          : "Remplissez ce formulaire, nous vous recontactons rapidement pour confirmer."}
       </p>
 
       {status === "success" ? (

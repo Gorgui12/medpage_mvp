@@ -2,6 +2,7 @@
 import { getOwnedSite } from "@/lib/getOwnedSite";
 import { redirect } from "next/navigation";
 import dynamic from "next/dynamic";
+import { serializeMongoose } from "@/lib/serialize";
 
 // Lazy loading du SiteEditor pour améliorer les performances
 const SiteEditor = dynamic(() => import("@/app/components/dashboard/SiteEditor"), {
@@ -19,13 +20,11 @@ export default async function SiteEditPage() {
     redirect("/");
   }
 
-  // site est déjà un objet plain grâce à .lean() dans getOwnedSite
-  // On convertit juste _id en string pour éviter les erreurs de sérialisation
-  const plainSite = {
-    ...site,
-    _id: site._id?.toString(),
-    userId: site.userId?.toString(),
-  };
+  // site est déjà un objet plain grâce à .lean() dans getOwnedSite.
+  // serializeMongoose convertit RÉCURSIVEMENT tous les ObjectId (top-level
+  // ET imbriqués) en strings, ce qui est obligatoire pour passer le site
+  // à un Client Component sans erreur de sérialisation Next.js.
+  const plainSite = serializeMongoose(site);
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
