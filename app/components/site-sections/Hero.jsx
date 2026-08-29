@@ -1,5 +1,4 @@
 // app/components/site-sections/Hero.jsx
-import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Phone, CalendarCheck } from "lucide-react";
 import { cloudinaryOptimized } from "@/lib/cloudinaryImage";
@@ -61,13 +60,13 @@ export default function Hero({ site, accent, geo }) {
       {/* — Image de couverture en arrière-plan si présente — */}
       {hasCover && (
         <div className="absolute inset-0">
-          <Image
+          {/* <img> natif : l'URL Cloudinary est déjà optimisée (f_auto,q_auto),
+              on évite l'optimiseur _next/image (404 sur sous-domaine en dev) */}
+          <img
             src={coverSrc}
             alt={`Cabinet ${site.cabinetName} - ${site.specialty} à ${site.city}`}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
+            fetchPriority="high"
+            className="absolute inset-0 w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-white/85" />
         </div>
@@ -188,13 +187,11 @@ function HeroVisual({ site, profileSrc, accent }) {
       />
       {/* Photo */}
       <div className="absolute inset-0 rounded-full overflow-hidden border-4 border-white shadow-2xl">
-        <Image
+        <img
           src={profileSrc}
           alt={`Dr. ${site.doctorName} - ${site.specialty} à ${site.city}`}
-          fill
-          priority
-          sizes="420px"
-          className="object-cover"
+          loading="eager"
+          className="absolute inset-0 w-full h-full object-cover"
         />
       </div>
 

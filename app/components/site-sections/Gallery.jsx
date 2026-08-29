@@ -1,5 +1,4 @@
 // app/components/site-sections/Gallery.jsx
-import Image from "next/image";
 import { ZoomIn, X } from "lucide-react";
 import { cloudinaryOptimized } from "@/lib/cloudinaryImage";
 
@@ -34,12 +33,10 @@ export default function Gallery({ site, accent }) {
             href={`#photo-${index}`}
             className="masonry-item group relative block rounded-2xl overflow-hidden cursor-zoom-in"
           >
-            <Image
+            <img
               src={url}
               alt={`Dr. ${site.doctorName} - ${site.specialty} à ${site.city} : photo ${index + 1} du cabinet`}
-              width={800}
-              height={600}
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              loading="lazy"
               className="w-full h-auto object-cover transition-transform duration-[400ms] group-hover:scale-[1.03]"
             />
             {/* Overlay au hover */}
@@ -69,12 +66,9 @@ export default function Gallery({ site, accent }) {
           >
             <X className="h-5 w-5 text-white" />
           </a>
-          <Image
+          <img
             src={url}
             alt={`Dr. ${site.doctorName} - ${site.specialty} à ${site.city} : photo ${index + 1} en grand`}
-            width={1200}
-            height={900}
-            sizes="(max-width: 1200px) 100vw, 1200px"
             className="max-h-[90vh] max-w-full w-auto h-auto object-contain rounded-lg"
           />
         </div>

@@ -1,5 +1,4 @@
 // app/components/site-sections/About.jsx
-import Image from "next/image";
 import { Check } from "lucide-react";
 import { cloudinaryOptimized } from "@/lib/cloudinaryImage";
 
@@ -33,12 +32,10 @@ export default function About({ site, accent, geo }) {
               }}
             />
             <div className="relative rounded-[32px] overflow-hidden shadow-xl">
-              <Image
+              <img
                 src={profileSrc}
                 alt={`Dr. ${site.doctorName} - ${site.specialty} à ${site.city}`}
-                width={600}
-                height={750}
-                sizes="(max-width: 768px) 90vw, 45vw"
+                loading="lazy"
                 className="w-full h-auto object-cover aspect-[4/5]"
               />
             </div>
