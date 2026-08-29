@@ -2,21 +2,329 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* --- Design tokens MedPage --- */
+  --font-playfair: "Playfair Display", serif;
+  --font-inter: "Inter", sans-serif;
+  --font-dm: "DM Sans", sans-serif;
+
+  /* Palette de base */
+  --bg-base: #fafafa;
+  --bg-alt: #f0f4f8;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #94a3b8;
+  --border: #e2e8f0;
+  --card-bg: #ffffff;
+
+  /* Accent (surchargé par le themeColor du médecin via une variable inline) */
+  --accent: #0ea5a8;
+  --accent-light: rgba(14, 165, 168, 0.15);
+  --accent-strong: #0d8f92;
+
+  /* Ombres */
+  --shadow-soft:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-hover:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+  /* Radius */
+  --radius-card: 16px;
+  --radius-section: 24px;
+  --radius-pill: 999px;
+}
+
 html {
   scroll-behavior: smooth;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-inter);
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-@keyframes fadeIn {
+.font-playfair {
+  font-family: var(--font-playfair);
+}
+.font-dm {
+  font-family: var(--font-dm);
+}
+
+/* --- Gradient text (avec préfixe -webkit- pour Safari) --- */
+.gradient-text {
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* --- Bouton CTA primaire avec gradient animé (shimmer) --- */
+.cta-primary {
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    var(--accent-strong) 25%,
+    var(--accent) 50%,
+    var(--accent-strong) 75%,
+    var(--accent) 100%
+  );
+  background-size: 200% auto;
+  animation: shimmer 3s linear infinite;
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+}
+.cta-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+}
+.cta-primary:active {
+  transform: scale(0.98);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+/* --- Floating cards --- */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.floating-card {
+  animation: float 3s ease-in-out infinite;
+}
+.floating-card:nth-child(2) {
+  animation-delay: 1.5s;
+}
+
+/* --- Anneau rotatif lent (cercle photo) --- */
+@keyframes spin-slow {
   from {
-    opacity: 0;
-    transform: translateY(6px);
+    transform: rotate(0deg);
   }
   to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: rotate(360deg);
   }
+}
+.ring-spin {
+  animation: spin-slow 20s linear infinite;
+}
+
+/* --- Point pulsant (badge "Disponible") --- */
+@keyframes pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--accent-light);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(0, 200, 83, 0);
+  }
+}
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* --- Confettis (succès formulaire) --- */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(120px) rotate(360deg);
+    opacity: 0;
+  }
+}
+.confetti {
+  position: absolute;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  animation: confetti-fall 1.2s ease-in forwards;
+}
+
+/* --- ECG (ligne de vie) --- */
+@keyframes ecg {
+  0% {
+    stroke-dashoffset: 1000;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+.ecg-path {
+  stroke-dasharray: 1000;
+  animation: ecg 4s linear infinite;
+}
+
+/* --- Nav underline slide (SiteHeader) --- */
+.nav-link {
+  position: relative;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  height: 2px;
+  width: 100%;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 200ms ease-out;
+}
+.nav-link:hover::after,
+.nav-link.nav-active::after {
+  transform: scaleX(1);
+}
+
+/* --- Chevron FAQ --- */
+.faq-chevron {
+  transition: transform 300ms ease;
+}
+details[open] .faq-chevron {
+  transform: rotate(180deg);
+}
+.faq-question {
+  transition: color 200ms ease;
+}
+details[open] .faq-question {
+  color: var(--accent);
+}
+
+/* --- Masonry gallery --- */
+.masonry {
+  column-count: 3;
+  column-gap: 16px;
+}
+@media (max-width: 1024px) {
+  .masonry {
+    column-count: 2;
+  }
+}
+@media (max-width: 640px) {
+  .masonry {
+    column-count: 1;
+  }
+}
+.masonry-item {
+  break-inside: avoid;
+  margin-bottom: 16px;
+}
+
+/* --- Testimonials scroll-snap carousel --- */
+.snap-scroll {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.snap-scroll > * {
+  scroll-snap-align: center;
+}
+
+/* --- Floating labels (BookingSection) --- */
+.floating-label-group {
+  position: relative;
+}
+.floating-input {
+  width: 100%;
+  height: 56px;
+  padding: 22px 20px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 15px;
+  color: var(--text-primary);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+  outline: none;
+}
+.floating-input::placeholder {
+  color: transparent;
+}
+.floating-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+.floating-label {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 15px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  transition: all 200ms ease-out;
+}
+.floating-textarea-group .floating-label {
+  top: 24px;
+  transform: none;
+}
+.floating-input:focus + .floating-label,
+.floating-input:not(:placeholder-shown) + .floating-label {
+  top: 14px;
+  transform: translateY(-50%) scale(0.78);
+  transform-origin: left;
+  color: var(--accent);
+}
+.floating-textarea-group .floating-input {
+  height: 120px;
+  resize: none;
+  padding-top: 28px;
+}
+.floating-textarea-group .floating-input:focus + .floating-label,
+.floating-textarea-group .floating-input:not(:placeholder-shown) + .floating-label {
+  top: 14px;
+}
+
+/* --- Focus visible global (accessibilité) --- */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- Card service : border-top accent qui apparaît au hover (CSS pur) --- */
+.service-card {
+  border-top: 3px solid transparent;
+  transition: border-color 200ms ease-out, transform 200ms ease-out, box-shadow 200ms ease-out;
+}
+.service-card:hover {
+  border-top-color: var(--accent);
+}
+
+/* --- Icônes réseaux sociaux du footer (accent, fond au hover) --- */
+.social-icon {
+  color: var(--accent, #0ea5a8);
+}
+.social-icon:hover {
+  background-color: var(--accent, #0ea5a8);
+  color: #fff;
+}
+
+/* --- Scrollbar premium --- */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-alt);
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }

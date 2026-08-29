@@ -217,7 +217,10 @@ export default async function MedicalSitePage({ params }) {
   const geo = detectGeo(site.city);
 
   return (
-    <main className="min-h-screen bg-white text-slate-800 antialiased">
+    <main
+      className="min-h-screen text-slate-800 antialiased"
+      style={{ backgroundColor: "var(--bg-base)", ["--accent" ]: accent }}
+    >
       {/* Données structurées schema.org injectées côté serveur */}
       <SiteSchemaOrg site={site} />
 
@@ -230,42 +233,42 @@ export default async function MedicalSitePage({ params }) {
           About reste en statique (au-dessus de la ligne de flottaison) pour
           un meilleur LCP ; les sections suivantes sont lazy-loadées.
         */}
-        <RevealOnScroll>
+        <RevealOnScroll variant="slide-right">
           <About site={site} accent={accent} geo={geo} />
         </RevealOnScroll>
       </div>
 
       <div id="services">
-        <RevealOnScroll>
+        <RevealOnScroll variant="slide-up">
           <Services site={site} accent={accent} />
         </RevealOnScroll>
       </div>
 
       <div id="gallery">
-        <RevealOnScroll>
+        <RevealOnScroll variant="scale">
           <Gallery site={site} accent={accent} />
         </RevealOnScroll>
       </div>
 
       <div id="testimonials">
-        <RevealOnScroll>
+        <RevealOnScroll variant="slide-left">
           <Testimonials site={site} accent={accent} />
         </RevealOnScroll>
       </div>
 
-      <RevealOnScroll>
+      <RevealOnScroll variant="fade">
         <FAQ site={site} accent={accent} />
       </RevealOnScroll>
 
-      <RevealOnScroll>
+      <RevealOnScroll variant="slide-left">
         <LocationMap site={site} accent={accent} />
       </RevealOnScroll>
 
-      <RevealOnScroll>
+      <RevealOnScroll variant="slide-up">
         <BookingSection site={site} accent={accent} geo={geo} />
       </RevealOnScroll>
 
-      <RevealOnScroll>
+      <RevealOnScroll variant="fade">
         <PracticalInfo site={site} accent={accent} />
       </RevealOnScroll>
 

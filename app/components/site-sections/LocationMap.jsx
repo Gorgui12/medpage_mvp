@@ -1,111 +1,134 @@
 // app/components/site-sections/LocationMap.jsx
-import { MapPin, ExternalLink } from "lucide-react";
+import { MapPin, Clock, Navigation, ExternalLink } from "lucide-react";
 
 /**
  * Transforme un lien Google Maps "classique" (partage, ou lien de fiche
  * établissement) en URL embarquable en iframe, quand c'est possible.
- *
- * Deux cas gérés :
- * 1. Le médecin a collé un lien d'intégration officiel (contient déjà
- *    "output=embed" ou "/maps/embed") -> on l'utilise directement.
- * 2. Le médecin a collé un lien de partage classique (maps.app.goo.gl,
- *    google.com/maps/place/...) -> on le transforme en ajoutant
- *    "&output=embed", qui fonctionne dans la plupart des cas avec le
- *    point de terminaison public historique de Google Maps.
- *
- * Si la transformation échoue ou semble invalide, on retombe sur un simple
- * lien "Voir sur Google Maps" plutôt que d'afficher un iframe cassé.
  */
 function buildEmbedUrl(rawUrl) {
   if (!rawUrl) return null;
-
   try {
-    // Cas 1 : déjà un lien d'intégration
     if (rawUrl.includes("output=embed") || rawUrl.includes("/maps/embed") || rawUrl.includes("/maps/embed/v1/")) {
       return rawUrl;
     }
-
-    // Cas 2 : lien court Google (maps.app.goo.gl) -> on ne peut pas transformer, on utilise le fallback
     if (rawUrl.includes("maps.app.goo.gl")) {
       return null;
     }
-
-    // Cas 3 : lien classique -> on tente d'ajouter output=embed
     const url = new URL(rawUrl);
-    
-    // Pour les liens Google Maps classiques, on utilise le format d'embed API
     if (url.hostname.includes("google.com") || url.hostname.includes("maps.google.com")) {
-      // Extraire le lieu de l'URL et le convertir en format embed
       const placeMatch = rawUrl.match(/\/place\/([^\/]+)/);
       if (placeMatch) {
         const place = placeMatch[1];
-        return `https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent(place)}`;
+        if (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+          return `https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent(place)}`;
+        }
       }
-      
-      // Alternative : utiliser le mode embed direct
       url.searchParams.set("output", "embed");
       return url.toString();
     }
-    
-    return null; // Format non supporté
+    return null;
   } catch {
-    return null; // URL malformée, on ne tente pas l'iframe
+    return null;
   }
 }
 
 export default function LocationMap({ site, accent }) {
   if (!site.mapUrl) return null;
-
   const embedUrl = buildEmbedUrl(site.mapUrl);
 
   return (
-    <section className="max-w-5xl mx-auto px-6 py-16 border-t border-slate-100">
-      <h2
-        className="text-xs font-semibold uppercase tracking-wider mb-3 text-center"
-        style={{ color: accent }}
-      >
-        Comment nous trouver
-      </h2>
-      <h3 className="text-2xl font-bold text-slate-900 text-center mb-10">
-        Notre localisation
-      </h3>
+    <section className="max-w-[1200px] mx-auto px-6 py-20 md:py-[120px]">
+      {/* Header */}
+      <div className="text-center max-w-2xl mx-auto mb-14">
+        <span
+          className="font-dm inline-block text-xs font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full mb-5"
+          style={{ backgroundColor: `${accent}1A`, color: accent }}
+        >
+          Comment nous trouver
+        </span>
+        <h2 className="font-playfair text-3xl md:text-[40px] leading-tight font-bold text-slate-900">
+          Notre localisation
+        </h2>
+        <p className="mt-4 text-slate-500 text-[15px]">
+          Facilement accessible, en plein cœur de {site.city}.
+        </p>
+      </div>
 
-      {embedUrl ? (
-        <div className="rounded-2xl overflow-hidden border border-slate-100">
+      {/* Carte + bande info */}
+      <div className="rounded-3xl overflow-hidden shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] border border-slate-100 bg-white">
+        {embedUrl ? (
           <iframe
             src={embedUrl}
             width="100%"
-            height="350"
-            style={{ border: 0 }}
+            height="400"
+            style={{ border: 0, display: "block" }}
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
             title={`Localisation de ${site.cabinetName}`}
           />
-        </div>
-      ) : (
-        // Fallback si jamais l'URL fournie ne peut pas être intégrée
-        <a
-          href={site.mapUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 py-10 rounded-2xl border border-slate-100 bg-slate-50 text-slate-600 hover:bg-slate-100 transition"
-        >
-          <MapPin className="h-5 w-5" style={{ color: accent }} />
-          Voir sur Google Maps
-          <ExternalLink className="h-4 w-4" />
-        </a>
-      )}
+        ) : (
+          <a
+            href={site.mapUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 h-[400px] bg-slate-50 text-slate-600 hover:bg-slate-100 transition flex-col"
+          >
+            <MapPin className="h-8 w-8" style={{ color: accent }} />
+            <span className="font-medium">Voir sur Google Maps</span>
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        )}
 
-      <div className="text-center mt-4">
-        <a
-          href={site.mapUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800"
-        >
-          Obtenir l'itinéraire
-          <ExternalLink className="h-3.5 w-3.5" />
-        </a>
+        {/* Bande d'infos */}
+        <div className="grid md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+          <div className="flex items-center gap-3 p-6">
+            <span
+              className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: `${accent}1A` }}
+            >
+              <MapPin className="h-5 w-5" style={{ color: accent }} />
+            </span>
+            <div>
+              <p className="font-dm text-[11px] uppercase tracking-wider text-slate-500">Adresse</p>
+              <p className="text-sm font-medium text-slate-800 mt-0.5">{site.address || site.city}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-6">
+            <span
+              className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: `${accent}1A` }}
+            >
+              <Clock className="h-5 w-5" style={{ color: accent }} />
+            </span>
+            <div>
+              <p className="font-dm text-[11px] uppercase tracking-wider text-slate-500">Horaires</p>
+              <p className="text-sm font-medium text-slate-800 mt-0.5">{site.openingHours}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-6">
+            <span
+              className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: `${accent}1A` }}
+            >
+              <Navigation className="h-5 w-5" style={{ color: accent }} />
+            </span>
+            <div>
+              <p className="font-dm text-[11px] uppercase tracking-wider text-slate-500">Itinéraire</p>
+              <a
+                href={site.mapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-semibold mt-0.5 inline-flex items-center gap-1"
+                style={{ color: accent }}
+              >
+                Obtenir l'itinéraire
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
