@@ -7,21 +7,28 @@ import Site from "@/models/Site";
 
 /**
  * Calcule l'URL de base de l'app à partir de la requête entrante.
- * On privilégie NEXT_PUBLIC_APP_URL si défini, sinon on dérive le schéma +
- * host du header Host de la requête. Cela garantit que le success_url de
- * Paddle pointe toujours vers le vrai domaine visité (jamais localhost en
- * production), même si l'environnement de prod n'a pas la variable.
+ *
+ * Règle : en production (host de la requête = un vrai domaine), on utilise
+ * TOUJOURS le domaine de la requête et on IGNORE une variable d'env locale
+ * (localhost) — une NEXT_PUBLIC_APP_URL oubliée en dev ne doit jamais faire
+ * atterrir le client sur localhost après paiement.
  */
 function resolveAppUrl(request) {
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "");
+  const host = request.headers.get("host") || "";
+  const isLocalHost = host.includes("localhost") || host === "localhost";
+  const requestUrl =
+    !isLocalHost && host
+      ? `${request.headers.get("x-forwarded-proto") || "https"}://${host}`
+      : null;
+
+  // Un vrai domaine dans la requête prime toujours.
+  if (requestUrl) {
+    return requestUrl.replace(/\/+$/, "");
   }
 
-  const host = request.headers.get("host");
-  if (host && !host.includes("localhost")) {
-    // En production derrière un proxy/load balancer, on suppose HTTPS.
-    const proto = request.headers.get("x-forwarded-proto") || "https";
-    return `${proto}://${host}`;
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/+$/, "");
   }
 
   return "http://localhost:3000";
@@ -36,8 +43,11 @@ function resolveAppUrl(request) {
  *   3. On renvoie l'URL du checkout hébergé Paddle ; le client y redirige.
  *
  * Après paiement, Paddle appelle /api/paddle/webhook (transaction.completed)
- * qui active le site. Le success_url ramène sur /dashboard?payment=success
- * pour afficher la bannière de confirmation.
+ * qui active le site. Paddle renvoie alors l'utilisateur vers success_url
+ * (configuré dans Paddle.Initialize, côté client). Le checkout.url de la
+ * transaction est le "payment link" : une URL de l'app (même domaine) qui
+ * charge Paddle.js ; Paddle.js détecte le paramètre ?_ptxn= et ouvre le
+ * checkout en overlay automatiquement.
  */
 export async function POST(request) {
   try {
@@ -84,7 +94,11 @@ export async function POST(request) {
       await Site.updateOne({ _id: site._id }, { paddleCustomerId: customerId });
     }
 
-    // --- Création de la transaction -> URL du checkout hébergé ---
+    // --- Création de la transaction -> payment link (checkout sur l'app) ---
+    // Paddle compose checkout.url = <URL passée> + "?_ptxn=<txn_id>". La
+    // page visée charge Paddle.js qui ouvre le checkout en overlay. La clé
+    // "settings.success_url" n'existe pas côté API : le succès est piloté
+    // par settings.successUrl de Paddle.Initialize (client).
     const transaction = await paddleRequest("/transactions", {
       method: "POST",
       body: JSON.stringify({
@@ -95,9 +109,7 @@ export async function POST(request) {
           subdomain: site.subdomain,
         },
         checkout: {
-          settings: {
-            success_url: `${APP_URL}/dashboard?payment=success`,
-          },
+          url: APP_URL,
         },
       }),
     });

@@ -1,6 +1,7 @@
 // app/layout.js
 import "./globals.css";
 import Providers from "./components/Providers";
+import PaddleCheckout from "./components/PaddleCheckout";
 import { Playfair_Display, Inter, DM_Sans } from "next/font/google";
 
 // --- Typographie du système de design MedPage ---
@@ -55,6 +56,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <Providers>{children}</Providers>
+        <PaddleCheckout />
       </body>
     </html>
   );
