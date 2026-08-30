@@ -1,158 +1,97 @@
 // app/api/paddle/webhook/route.js
 import { NextResponse } from "next/server";
-import crypto from "crypto";
-import { dbConnect } from "@/lib/mongodb";
-import Site from "@/models/Site";
+import { getPaddle } from "@/lib/paddleSdk";
+import { dispatchEvent } from "@/lib/paddleSync";
 
 /**
- * Webhook Paddle Billing.
+ * Webhook Paddle Billing — fulfillment & provisioning.
  *
- * Sécurité : chaque requête est signée par Paddle via le header
- * `Paddle-Signature: ts=<timestamp>;h1=<hmac_sha256_hex>`.
- * On recalcule HMAC-SHA256("<ts>:<body>", PADDLE_WEBHOOK_SECRET) et on
- * compare en temps constant. Une requête sans signature valide est rejetée
- * (400) — jamais de traitement basé sur un body non authentifié.
+ * Sécurité (dans l'ordre) :
+ *   1. Le BODY COMPLET n'est JAMAIS parsé en JSON avant vérification : on
+ *      le lit en texte (`await request.text()`) et c'est ce texte brut que
+ *      `paddle.webhooks.unmarshal(rawBody, secret, signature)` vérifie.
+ *      Un body pré-parsé (indentations/doublons de clés) échouerait.
+ *   2. La vérification utilise l'SDK officiel avec le SECRET DE SIGNATURE
+ *      du webhook ("signing key" de la notification destination), PAS la
+ *      clé API : elles sont différentes et non interchangeables.
+ *   3. Si la signature est invalide -> réponse non-2xx : Paddle considère
+ *      la livraison comme échouée et réessaiera. On ne compare jamais en
+ *      aveugle un event non authentifié.
+ *
+ * Les secrets vérifiés peuvent être pluraux (PADDLE_WEBHOOK_SECRET puis,
+ * optionnel, PADDLE_WEBHOOK_SECRET_2) : pendant une rotation ou si
+ * d'anciennes destinations restent actives, les deux continuent d'être
+ * acceptés sans causer de retries inutiles.
+ *
+ * Livraisons : au moins-une-fois et hors ordre possible. Les handlers
+ * (lib/paddleSync.js) font tous des upserts idempotents pivotés sur l'ID
+ * Paddle, jamais des insertions aveugles.
  */
+async function verifyAndUnmarshal(paddle, rawBody, signature) {
+  const secrets = [
+    process.env.PADDLE_WEBHOOK_SECRET,
+    process.env.PADDLE_WEBHOOK_SECRET_2,
+  ].filter(Boolean);
 
-function verifyPaddleSignature(rawBody, signatureHeader, secret) {
-  if (!signatureHeader || !secret) return false;
-
-  const parts = {};
-  for (const piece of signatureHeader.split(";")) {
-    const [key, value] = piece.split("=");
-    if (key && value) parts[key.trim()] = value.trim();
+  if (secrets.length === 0) {
+    console.error("PADDLE_WEBHOOK_SECRET non configuré.");
+    return { error: "invalid" };
   }
-  const { ts, h1 } = parts;
-  if (!ts || !h1) return false;
 
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(`${ts}:${rawBody}`)
-    .digest("hex");
+  const errors = [];
 
-  const a = Buffer.from(expected, "hex");
-  const b = Buffer.from(h1, "hex");
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
-
-/**
- * Statut de subscription Paddle -> statut interne du Site.
- */
-function mapSubscriptionStatus(paddleStatus) {
-  switch (paddleStatus) {
-    case "active":
-    case "trialing":
-      return "active";
-    case "past_due":
-      return "past_due";
-    case "canceled":
-      return "canceled";
-    case "paused":
-      return "paused";
-    default:
-      return null;
+  for (const secret of secrets) {
+    try {
+      return { event: await paddle.webhooks.unmarshal(rawBody, secret, signature) };
+    } catch (err) {
+      // Signature invalide pour ce secret : on essaie le suivant.
+      errors.push(err);
+    }
   }
+
+  // Aucun secret n'a vérifié la requête. On distingue deux cas :
+  //  - toutes les erreurs sont des échecs de SIGNATURE -> requête
+  //    définitivement inauthentique (400, Paddle ne réessaiera pas) ;
+  //  - au moins une erreur est un échec de PARSING du payload (mal formé,
+  //    incomplet) -> erreur transitoire de notre côté (500, Paddle relivrera).
+  const allSignatureFailures = errors.every((err) =>
+    String(err?.message).includes("signature verification failed")
+  );
+
+  return allSignatureFailures ? { error: "invalid" } : { error: "internal" };
 }
 
 export async function POST(request) {
   const rawBody = await request.text();
   const signature = request.headers.get("paddle-signature");
 
-  if (
-    !verifyPaddleSignature(rawBody, signature, process.env.PADDLE_WEBHOOK_SECRET)
-  ) {
-    console.error("Signature Paddle invalide ou absente.");
-    return NextResponse.json({ error: "Signature invalide." }, { status: 400 });
+  if (!rawBody || !signature) {
+    return NextResponse.json(
+      { error: "Body ou signature manquants." },
+      { status: 400 }
+    );
   }
 
-  let event;
+  // --- Vérification AVANT toute autre chose ---
+  const result = await verifyAndUnmarshal(getPaddle(), rawBody, signature);
+  if (!result.event) {
+    if (result.error === "invalid") {
+      console.error("Webhook Paddle rejeté : signature invalide.");
+      return NextResponse.json({ error: "Signature invalide." }, { status: 400 });
+    }
+    console.error("Webhook Paddle rejeté : payload illisible.", result.error);
+    return NextResponse.json({ error: "Erreur interne." }, { status: 500 });
+  }
+  const event = result.event;
+
+  // --- Routage vers les handlers typés (idempotents) ---
   try {
-    event = JSON.parse(rawBody);
-  } catch {
-    return NextResponse.json({ error: "JSON invalide." }, { status: 400 });
-  }
-
-  await dbConnect();
-
-  // Le payload réel de Paddle est en snake_case ("event_type") ; on garde
-  // un fallback camelCase par robustesse.
-  const type = event.event_type || event.eventType;
-  const data = event.data || {};
-
-  switch (type) {
-    // --- Paiement ponctuel du checkout terminé : on active le site ---
-    case "transaction.completed": {
-      const subdomain = data?.custom_data?.subdomain;
-      if (subdomain) {
-        await Site.findOneAndUpdate(
-          { subdomain: String(subdomain).toLowerCase() },
-          {
-            isPublished: true,
-            paddleSubscriptionId: data.subscription_id || null,
-            paddleSubscriptionStatus: "active",
-          }
-        );
-        console.log("Site activé (paiement Paddle) :", subdomain);
-      }
-      break;
-    }
-
-    case "subscription.activated":
-    case "subscription.resumed":
-    case "subscription.updated": {
-      const status = mapSubscriptionStatus(data.status);
-      if (!status) break;
-
-      const update = { paddleSubscriptionStatus: status };
-      if (status === "active") update.isPublished = true;
-
-      // Le site peut être retrouvé par l'id d'abonnement ; en secours par
-      // le customer (1 compte = 1 customer = 1 site dans ce MVP), au cas où
-      // l'événement arrive avant qu'on ait stocké l'abonnement.
-      const query = data.customer_id
-        ? {
-            $or: [
-              { paddleSubscriptionId: data.id },
-              { paddleCustomerId: data.customer_id },
-            ],
-          }
-        : { paddleSubscriptionId: data.id };
-
-      await Site.findOneAndUpdate(query, update);
-      break;
-    }
-
-    case "subscription.past_due": {
-      const query = data.customer_id
-        ? {
-            $or: [
-              { paddleSubscriptionId: data.id },
-              { paddleCustomerId: data.customer_id },
-            ],
-          }
-        : { paddleSubscriptionId: data.id };
-      await Site.findOneAndUpdate(query, { paddleSubscriptionStatus: "past_due" });
-      break;
-    }
-
-    case "subscription.canceled": {
-      const query = data.customer_id
-        ? {
-            $or: [
-              { paddleSubscriptionId: data.id },
-              { paddleCustomerId: data.customer_id },
-            ],
-          }
-        : { paddleSubscriptionId: data.id };
-      await Site.findOneAndUpdate(query, {
-        isPublished: false,
-        paddleSubscriptionStatus: "canceled",
-      });
-      break;
-    }
-
-    default:
-      break;
+    await dispatchEvent(event);
+  } catch (err) {
+    // Erreur interne (ex: DB indisponible) : non-2xx pour laisser Paddle
+    // relivrer ; les handlers étant idempotents, la relivraison est sûre.
+    console.error("Erreur traitement webhook Paddle :", err);
+    return NextResponse.json({ error: "Erreur interne." }, { status: 500 });
   }
 
   return NextResponse.json({ received: true }, { status: 200 });

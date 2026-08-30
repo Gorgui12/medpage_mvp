@@ -9,6 +9,7 @@ import {
   CalendarCheck,
   Settings,
   CreditCard,
+  UserCircle,
   LogOut,
   Menu,
   X,
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/rendez-vous", label: "Rendez-vous", icon: CalendarCheck },
   { href: "/dashboard/site", label: "Mon site", icon: Settings },
   { href: "/dashboard/abonnement", label: "Abonnement", icon: CreditCard },
+  { href: "/dashboard/compte", label: "Compte", icon: UserCircle },
 ];
 
 export default function DashboardSidebar({ userEmail }) {

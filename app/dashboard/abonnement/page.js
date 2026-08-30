@@ -3,6 +3,7 @@ import { getOwnedSite } from "@/lib/getOwnedSite";
 import { redirect } from "next/navigation";
 import { CheckCircle2, AlertCircle, XCircle } from "lucide-react";
 import ActivateButton from "@/app/components/ActivateButton";
+import ManageSubscriptionButton from "@/app/components/dashboard/ManageSubscriptionButton";
 
 const STATUS_INFO = {
   none: {
@@ -66,10 +67,11 @@ export default async function SubscriptionPage() {
       ) : (
         <div className="bg-white border border-slate-100 rounded-2xl p-6">
           <h2 className="font-semibold text-slate-800 mb-2">Votre site est actif</h2>
-          <p className="text-sm text-slate-500">
-            Pour toute question concernant votre facturation ou pour annuler
-            votre abonnement, contactez le support MedPage.
+          <p className="text-sm text-slate-500 mb-5">
+            Changez votre moyen de paiement, consultez vos factures ou annulez
+            votre abonnement directement depuis votre portail client.
           </p>
+          <ManageSubscriptionButton className="bg-slate-900 text-white hover:bg-slate-800" />
         </div>
       )}
     </div>
